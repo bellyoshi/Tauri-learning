@@ -15,6 +15,7 @@ export default function App() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [zoom, setZoom] = useState(1);
+  const [rotation, setRotation] = useState(0);
   const [settings, setSettings] = useState<ViewerSettings>(loadSettings());
   const [monitors, setMonitors] = useState<MonitorInfo[]>([]);
   const [managedMedia, setManagedMedia] = useState<ManagedMediaItem[]>([]);
@@ -40,12 +41,23 @@ export default function App() {
       listen<MediaPayload>("viewer:open-media", (event) => {
         setMedia(normalizeMediaPayload(event.payload));
         setCurrentPage(1);
+        setTotalPages(1);
+        setRotation(0);
       }),
       listen("viewer:page-next", () => setCurrentPage((prev) => Math.min(prev + 1, totalPages))),
       listen("viewer:page-prev", () => setCurrentPage((prev) => Math.max(prev - 1, 1))),
-      listen("viewer:zoom-in", () => setZoom((prev) => Math.min(prev + 0.1, 3))),
+      listen("viewer:page-first", () => setCurrentPage(1)),
+      listen("viewer:page-last", () => setCurrentPage(Math.max(1, totalPages))),
+      listen("viewer:zoom-in", () => setZoom((prev) => Math.min(prev + 0.1, 10))),
       listen("viewer:zoom-out", () => setZoom((prev) => Math.max(prev - 0.1, 0.2))),
       listen("viewer:zoom-reset", () => setZoom(1)),
+      listen<number>("viewer:zoom-set", (event) => setZoom(Math.max(0.2, Math.min(event.payload, 10)))),
+      listen<number>("viewer:rotation-set", (event) => {
+        const value = event.payload;
+        if (value === 0 || value === 90 || value === 180 || value === 270) {
+          setRotation(value);
+        }
+      }),
       listen<number>("viewer:video-seek", (event) => {
         const video = document.querySelector("video");
         if (video) video.currentTime = event.payload;
@@ -78,6 +90,7 @@ export default function App() {
         media={media}
         currentPage={Math.min(currentPage, totalPages)}
         zoom={zoom}
+        rotation={rotation}
         settings={settings}
         onPdfMeta={(pages) => setTotalPages(Math.max(1, pages))}
         onVideoStateChange={setVideoState}
@@ -103,6 +116,7 @@ export default function App() {
       currentPage={Math.min(currentPage, totalPages)}
       totalPages={totalPages}
       zoom={zoom}
+      rotation={rotation}
       mediaPath={media.path}
       managedMedia={managedMedia}
       monitors={monitors}
@@ -110,6 +124,7 @@ export default function App() {
       videoState={videoState}
       onSettingsOpen={() => invoke("open_settings_window")}
       onManagedMediaChange={setManagedMedia}
+      onPdfMeta={(pages) => setTotalPages(Math.max(1, pages))}
     />
   );
 }
