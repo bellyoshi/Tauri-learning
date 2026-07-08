@@ -58,6 +58,13 @@ struct ManagedMediaItem {
     path: String,
 }
 
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct WindowSize {
+    width: u32,
+    height: u32,
+}
+
 fn managed_media_dir(app: &AppHandle) -> Result<PathBuf, String> {
     let base = app
         .path()
@@ -163,6 +170,17 @@ fn attach_window_persistence(window: &WebviewWindow) {
     window.on_window_event(move |event| {
         if matches!(event, WindowEvent::Moved(_) | WindowEvent::Resized(_)) {
             save_window_bounds(&cloned);
+        }
+        if matches!(event, WindowEvent::Resized(_)) && cloned.label() == VIEWER_LABEL {
+            if let Ok(size) = cloned.inner_size() {
+                let _ = cloned.app_handle().emit(
+                    "viewer:window-resized",
+                    WindowSize {
+                        width: size.width,
+                        height: size.height,
+                    },
+                );
+            }
         }
     });
 }
@@ -292,6 +310,16 @@ fn toggle_viewer_mode(app: AppHandle) {
 }
 
 #[tauri::command]
+fn get_viewer_window_size(app: AppHandle) -> Option<WindowSize> {
+    let viewer = app.get_webview_window(VIEWER_LABEL)?;
+    let size = viewer.inner_size().ok()?;
+    Some(WindowSize {
+        width: size.width,
+        height: size.height,
+    })
+}
+
+#[tauri::command]
 fn list_monitors(app: AppHandle) -> Vec<MonitorInfo> {
     let Some(control) = app.get_webview_window(CONTROL_LABEL) else {
         return vec![];
@@ -391,6 +419,7 @@ pub fn run() {
             open_settings_window,
             toggle_titlebar,
             toggle_viewer_mode,
+            get_viewer_window_size,
             list_monitors,
             apply_viewer_settings,
             pick_and_import_media,

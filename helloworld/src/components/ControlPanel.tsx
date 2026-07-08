@@ -1,7 +1,7 @@
-import { useEffect, useRef } from "react";
-import { emit } from "@tauri-apps/api/event";
+import { useEffect, useRef, useState } from "react";
+import { emit, listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
-import { ManagedMediaItem, MonitorInfo, VideoState, ViewerSettings } from "../types";
+import { ManagedMediaItem, MediaPayload, MonitorInfo, VideoState, ViewerSettings } from "../types";
 import { buildMediaPayload, normalizeMediaPayload } from "../state/mediaState";
 import * as pdfjsLib from "pdfjs-dist";
 
@@ -23,8 +23,34 @@ interface Props {
 
 export function ControlPanel(props: Props) {
   const previewCanvasRef = useRef<HTMLCanvasElement>(null);
+  const [viewerAspectRatio, setViewerAspectRatio] = useState(1200 / 900);
   const normalizedMedia = normalizeMediaPayload(props.media);
   const mediaUrl = normalizedMedia.url;
+
+  useEffect(() => {
+    const updateViewerSize = async () => {
+      const size = await invoke<{ width: number; height: number } | null>("get_viewer_window_size");
+      if (!size) return;
+      if (size.width <= 0 || size.height <= 0) return;
+      setViewerAspectRatio(size.width / size.height);
+    };
+
+    void updateViewerSize();
+
+    const unlisten: Promise<() => void> = listen<{ width: number; height: number }>(
+      "viewer:window-resized",
+      (event) => {
+        const { width, height } = event.payload;
+        if (width > 0 && height > 0) {
+          setViewerAspectRatio(width / height);
+        }
+      }
+    );
+
+    return () => {
+      void unlisten.then((fn) => fn());
+    };
+  }, []);
 
   useEffect(() => {
     if (normalizedMedia.mediaType !== "pdf" || !mediaUrl) return;
@@ -73,35 +99,43 @@ export function ControlPanel(props: Props) {
         </div>
       </header>
 
-      <section className="block">
-        <h3>ファイル取り込み（Rust側ダイアログ）</h3>
-        <button onClick={openFile}>ファイルを選択して直下フォルダへコピー</button>
-        <p className="hint">{props.mediaPath || "未選択"}</p>
-      </section>
+      <div className="control-layout">
+        <div className="control-left">
+          <section className="block">
+            <h3>ファイル取り込み（Rust側ダイアログ）</h3>
+            <button onClick={openFile}>ファイルを選択して直下フォルダへコピー</button>
+            <p className="hint">{props.mediaPath || "未選択"}</p>
+          </section>
 
-      <section className="block">
-        <h3>直下 managed-media 一覧</h3>
-        <div className="managed-list">
-          {props.managedMedia.length === 0 && <p className="hint">ファイルがありません</p>}
-          {props.managedMedia.map((item) => (
-            <button key={item.path} className="managed-item" onClick={() => openManagedItem(item)}>
-              {item.name}
-            </button>
-          ))}
+          <section className="block">
+            <h3>直下 managed-media 一覧</h3>
+            <div className="managed-list">
+              {props.managedMedia.length === 0 && <p className="hint">ファイルがありません</p>}
+              {props.managedMedia.map((item) => (
+                <button key={item.path} className="managed-item" onClick={() => openManagedItem(item)}>
+                  {item.name}
+                </button>
+              ))}
+            </div>
+          </section>
         </div>
-      </section>
 
-      <section className="block">
-        <h3>プレビュー</h3>
-        {normalizedMedia.mediaType === "image" && (
-          <img className="thumb" src={mediaUrl} alt="preview image" />
-        )}
-        {normalizedMedia.mediaType === "video" && (
-          <video className="preview-video" src={mediaUrl} controls muted />
-        )}
-        {normalizedMedia.mediaType === "pdf" && <canvas className="preview-pdf-canvas" ref={previewCanvasRef} />}
-        {normalizedMedia.mediaType === "none" && <p className="hint">表示するファイルを選択してください</p>}
-      </section>
+        <div className="control-right">
+          <section className="block">
+            <h3>プレビュー</h3>
+            <div className="preview-stage" style={{ aspectRatio: String(viewerAspectRatio) }}>
+              {normalizedMedia.mediaType === "image" && (
+                <img className="preview-fit" src={mediaUrl} alt="preview image" />
+              )}
+              {normalizedMedia.mediaType === "video" && (
+                <video className="preview-fit" src={mediaUrl} controls muted />
+              )}
+              {normalizedMedia.mediaType === "pdf" && <canvas className="preview-fit preview-pdf-canvas" ref={previewCanvasRef} />}
+              {normalizedMedia.mediaType === "none" && <p className="hint">表示するファイルを選択してください</p>}
+            </div>
+          </section>
+        </div>
+      </div>
 
       {normalizedMedia.mediaType === "pdf" && (
         <section className="block">
@@ -127,7 +161,7 @@ export function ControlPanel(props: Props) {
       </section>
 
       <section className="block">
-        <h3>動画操作（Viewerには表示しない）</h3>
+        <h3>動画操作</h3>
         <div className="row">
           <button onClick={() => emit("viewer:video-play")}>再生</button>
           <button onClick={() => emit("viewer:video-pause")}>停止</button>
