@@ -25,7 +25,8 @@ export function isValidRotation(value: number): value is Rotation {
 
 export function mediaTransformStyle(zoom: number, rotation: number): CSSProperties {
   return {
-    transform: `scale(${zoom}) rotate(${rotation}deg)`,
-    transformOrigin: "center center"
+    zoom,
+    transform: `rotate(${rotation}deg)`,
+    transformOrigin: "top center"
   };
 }

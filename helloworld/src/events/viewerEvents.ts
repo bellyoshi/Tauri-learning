@@ -1,4 +1,4 @@
-import { MediaPayload, ViewerSettings } from "../types";
+import { MediaPayload, ViewerSettings, ViewportState } from "../types";
 
 export const VIEWER_EVENTS = {
   OPEN_MEDIA: "viewer:open-media",
@@ -17,7 +17,8 @@ export const VIEWER_EVENTS = {
   VIDEO_PLAY: "viewer:video-play",
   VIDEO_PAUSE: "viewer:video-pause",
   SETTINGS_UPDATED: "viewer:settings-updated",
-  WINDOW_RESIZED: "viewer:window-resized"
+  WINDOW_RESIZED: "viewer:window-resized",
+  VIEWPORT_SYNC: "viewer:viewport-sync"
 } as const;
 
 export type ViewerEventName = (typeof VIEWER_EVENTS)[keyof typeof VIEWER_EVENTS];
@@ -31,4 +32,5 @@ export type ViewerEventPayloads = {
   [VIEWER_EVENTS.VIDEO_VOLUME]: number;
   [VIEWER_EVENTS.SETTINGS_UPDATED]: Partial<ViewerSettings>;
   [VIEWER_EVENTS.WINDOW_RESIZED]: { width: number; height: number };
+  [VIEWER_EVENTS.VIEWPORT_SYNC]: ViewportState;
 };

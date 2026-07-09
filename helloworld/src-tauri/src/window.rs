@@ -75,6 +75,31 @@ pub fn attach_window_persistence(window: &WebviewWindow) {
     });
 }
 
+pub fn attach_control_window_handlers(window: &WebviewWindow) {
+    attach_window_persistence(window);
+    let app = window.app_handle().clone();
+    let cloned = window.clone();
+    window.on_window_event(move |event| {
+        if matches!(event, WindowEvent::CloseRequested { .. }) {
+            save_window_bounds(&cloned);
+            app.exit(0);
+        }
+    });
+}
+
+pub fn attach_viewer_window_handlers(window: &WebviewWindow) {
+    attach_window_persistence(window);
+    let cloned = window.clone();
+    window.on_window_event(move |event| {
+        if let WindowEvent::CloseRequested { api, .. } = event {
+            // Keep the viewer window alive so it can be shown again quickly.
+            api.prevent_close();
+            save_window_bounds(&cloned);
+            let _ = cloned.hide();
+        }
+    });
+}
+
 fn apply_saved_bounds(window: &WebviewWindow, state: &PersistedState) -> bool {
     let Some(bounds) = state.windows.get(window.label()) else {
         return false;
@@ -129,13 +154,28 @@ fn build_viewer_window(app: &AppHandle) -> Result<WebviewWindow, tauri::Error> {
         .build()
 }
 
+fn build_settings_window(app: &AppHandle) -> Result<WebviewWindow, tauri::Error> {
+    WebviewWindowBuilder::new(app, SETTINGS_LABEL, WebviewUrl::App("index.html".into()))
+        .title("Settings")
+        .inner_size(420.0, 540.0)
+        .visible(false)
+        .build()
+}
+
 fn initialize_viewer_window(app: &AppHandle, viewer: &WebviewWindow) {
-    attach_window_persistence(viewer);
+    attach_viewer_window_handlers(viewer);
     let state = load_state(app);
     let has_saved = apply_saved_bounds(viewer, &state);
     if !has_saved {
         auto_place_windows(app);
     }
+}
+
+fn initialize_settings_window(app: &AppHandle, settings: &WebviewWindow) {
+    let _ = settings.set_always_on_top(true);
+    attach_window_persistence(settings);
+    let state = load_state(app);
+    let _ = apply_saved_bounds(settings, &state);
 }
 
 pub fn ensure_windows(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
@@ -146,26 +186,18 @@ pub fn ensure_windows(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
     }
 
     if app_handle.get_webview_window(SETTINGS_LABEL).is_none() {
-        let settings = WebviewWindowBuilder::new(
-            &app_handle,
-            SETTINGS_LABEL,
-            WebviewUrl::App("index.html".into()),
-        )
-        .title("Settings")
-        .inner_size(420.0, 540.0)
-        .visible(false)
-        .build()?;
-        let _ = settings.set_always_on_top(true);
+        let settings = build_settings_window(&app_handle)?;
+        initialize_settings_window(&app_handle, &settings);
     }
 
     let state = load_state(&app_handle);
 
     if let Some(control) = app_handle.get_webview_window(CONTROL_LABEL) {
-        attach_window_persistence(&control);
+        attach_control_window_handlers(&control);
         let _ = apply_saved_bounds(&control, &state);
     }
     if let Some(viewer) = app_handle.get_webview_window(VIEWER_LABEL) {
-        attach_window_persistence(&viewer);
+        attach_viewer_window_handlers(&viewer);
         let has_saved = apply_saved_bounds(&viewer, &state);
         if !has_saved {
             auto_place_windows(&app_handle);
@@ -180,10 +212,21 @@ pub fn ensure_windows(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
 }
 
 pub fn open_settings_window(app: &AppHandle) {
-    if let Some(win) = app.get_webview_window(SETTINGS_LABEL) {
-        let _ = win.show();
-        let _ = win.set_focus();
-    }
+    let settings_window = if let Some(win) = app.get_webview_window(SETTINGS_LABEL) {
+        win
+    } else {
+        match build_settings_window(app) {
+            Ok(created) => {
+                initialize_settings_window(app, &created);
+                created
+            }
+            Err(_) => return,
+        }
+    };
+
+    let _ = settings_window.unminimize();
+    let _ = settings_window.show();
+    let _ = settings_window.set_focus();
 }
 
 pub fn toggle_titlebar(app: &AppHandle) {
@@ -220,7 +263,8 @@ pub fn get_viewer_window_size(app: &AppHandle) -> Option<WindowSize> {
 
 pub fn close_viewer_window(app: &AppHandle) {
     if let Some(viewer) = app.get_webview_window(VIEWER_LABEL) {
-        let _ = viewer.close();
+        save_window_bounds(&viewer);
+        let _ = viewer.hide();
     }
 }
 
@@ -232,8 +276,15 @@ pub fn ensure_viewer_window(app: &AppHandle) -> Result<(), String> {
         initialize_viewer_window(app, &created);
         created
     };
-    let _ = viewer.show();
-    let _ = viewer.set_focus();
+    viewer
+        .unminimize()
+        .map_err(|e| format!("Viewerウインドウ最小化解除失敗: {e}"))?;
+    viewer
+        .show()
+        .map_err(|e| format!("Viewerウインドウ表示失敗: {e}"))?;
+    viewer
+        .set_focus()
+        .map_err(|e| format!("Viewerウインドウフォーカス失敗: {e}"))?;
     Ok(())
 }
 

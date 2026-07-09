@@ -125,14 +125,23 @@ button {
   justify-content: center;
   align-items: center;
   overflow: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.viewer-wrapper::-webkit-scrollbar {
+  display: none;
 }
 
 .media-image {
+  display: block;
+  max-width: none;
   transform-origin: center center;
 }
 
 .media-video {
-  max-width: 100%;
+  display: block;
+  max-width: none;
   max-height: 100%;
 }
 

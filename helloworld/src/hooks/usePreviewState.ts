@@ -15,9 +15,11 @@ interface PreviewSource {
 
 export function usePreviewState(source: PreviewSource) {
   const [autoDisplay, setAutoDisplay] = useState(true);
-  const [previewMedia, setPreviewMedia] = useState<MediaPayload | null>(null);
+  const [previewMedia, setPreviewMedia] = useState<MediaPayload | null>(
+    source.media.mediaType === "none" ? null : source.media
+  );
   const [previewPage, setPreviewPage] = useState(source.currentPage);
-  const [previewTotalPages, setPreviewTotalPages] = useState(1);
+  const [previewTotalPages, setPreviewTotalPages] = useState(source.totalPages);
   const [previewZoom, setPreviewZoom] = useState(source.zoom);
   const [previewRotation, setPreviewRotation] = useState(source.rotation);
   const [previewVideoState, setPreviewVideoState] = useState<VideoState>({
@@ -27,24 +29,36 @@ export function usePreviewState(source: PreviewSource) {
     volume: 1
   });
 
-  const activeMedia = autoDisplay ? source.media : (previewMedia ?? source.media);
+  const activeMedia = previewMedia ?? source.media;
   const normalizedMedia = normalizeMediaPayload(activeMedia);
   const isVideoMedia = normalizedMedia.mediaType === "video";
 
-  const effectivePage = autoDisplay ? source.currentPage : previewPage;
-  const effectiveTotalPages = autoDisplay ? source.totalPages : previewTotalPages;
-  const effectiveZoom = autoDisplay ? source.zoom : previewZoom;
-  const effectiveRotation = autoDisplay ? source.rotation : previewRotation;
-  const effectiveVideoState = autoDisplay ? source.videoState : previewVideoState;
+  const effectivePage = previewPage;
+  const effectiveTotalPages = previewTotalPages;
+  const effectiveZoom = previewZoom;
+  const effectiveRotation = previewRotation;
+  const effectiveVideoState = previewVideoState;
 
   useEffect(() => {
     if (!autoDisplay) return;
-    setPreviewMedia(null);
-    setPreviewTotalPages(source.totalPages);
+    if (source.media.mediaType === "none") return;
+    if (previewMedia) return;
+    setPreviewMedia(source.media);
     setPreviewPage(source.currentPage);
+    setPreviewTotalPages(source.totalPages);
     setPreviewZoom(source.zoom);
     setPreviewRotation(source.rotation);
-  }, [autoDisplay, source.currentPage, source.totalPages, source.zoom, source.rotation]);
+    setPreviewVideoState(source.videoState);
+  }, [
+    autoDisplay,
+    previewMedia,
+    source.currentPage,
+    source.media,
+    source.rotation,
+    source.totalPages,
+    source.videoState,
+    source.zoom
+  ]);
 
   useEffect(() => {
     if (normalizedMedia.mediaType !== "pdf") {
@@ -61,15 +75,22 @@ export function usePreviewState(source: PreviewSource) {
 
   const dispatch = useCallback(
     (event: string, payload: unknown | undefined, local: () => void) => {
+      local();
       if (autoDisplay) {
         if (payload === undefined) void emit(event);
         else void emit(event, payload);
-        return;
       }
-      local();
     },
     [autoDisplay]
   );
+
+  const resetPreview = useCallback(() => {
+    setPreviewMedia(null);
+    setPreviewPage(1);
+    setPreviewTotalPages(1);
+    setPreviewZoom(1);
+    setPreviewRotation(0);
+  }, []);
 
   return {
     autoDisplay,
@@ -94,6 +115,7 @@ export function usePreviewState(source: PreviewSource) {
     effectiveRotation,
     effectiveVideoState,
     dispatch,
+    resetPreview,
     events: VIEWER_EVENTS
   };
 }

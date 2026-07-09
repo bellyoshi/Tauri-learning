@@ -48,6 +48,8 @@ npm run test:run
 | `src/state/videoResumeState.test.ts` | 動画再生位置の保存/復元 |
 | `src/state/settingsState.test.ts` | 設定の読み書き |
 | `src/lib/viewTransform.test.ts` | ズーム・回転ユーティリティ |
+| `src/lib/fitZoom.test.ts` | フィットズーム計算 |
+| `src/lib/viewerBackground.test.ts` | 背景スタイル生成 |
 | `src/hooks/usePreviewState.test.ts` | 自動表示 ON/OFF 時のプレビュー状態 |
 | `src/lib/pdf/renderPdfPage.test.ts` | PDF ページ描画（ページ番号クランプ等） |
 | `src/lib/pdf/getMediaBaseSize.test.ts` | メディア種別ごとの基準サイズ取得 |

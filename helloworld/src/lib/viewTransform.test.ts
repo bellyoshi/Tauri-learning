@@ -27,10 +27,11 @@ describe("viewTransform", () => {
     expect(isValidRotation(45)).toBe(false);
   });
 
-  it("ズームと回転を transform スタイルに変換する", () => {
+  it("ズームと回転を表示スタイルに変換する", () => {
     expect(mediaTransformStyle(1.5, 90)).toEqual({
-      transform: "scale(1.5) rotate(90deg)",
-      transformOrigin: "center center"
+      zoom: 1.5,
+      transform: "rotate(90deg)",
+      transformOrigin: "top center"
     });
   });
 });

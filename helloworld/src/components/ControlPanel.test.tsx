@@ -1,10 +1,9 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ControlPanel } from "./ControlPanel";
 import { EMPTY_MEDIA } from "../state/mediaState";
 import { DEFAULT_SETTINGS } from "../state/settingsState";
-import { MediaPayload } from "../types";
-
+import { createMedia } from "../test/fixtures/media";
 const invokeMock = vi.fn();
 const emitMock = vi.fn();
 const listenMock = vi.fn(() => Promise.resolve(() => {}));
@@ -31,17 +30,6 @@ vi.mock("pdfjs-dist", () => ({
     })
   }))
 }));
-
-function createMedia(mediaType: MediaPayload["mediaType"], path = "C:\\media\\file"): MediaPayload {
-  const fileName =
-    mediaType === "pdf" ? "sample.pdf" : mediaType === "video" ? "clip.mp4" : mediaType === "image" ? "photo.png" : "";
-  const fullPath = fileName ? `${path}\\${fileName}` : "";
-  return {
-    path: fullPath,
-    url: `asset://localhost/${fullPath}`,
-    mediaType
-  };
-}
 
 function renderControlPanel(overrides: Partial<React.ComponentProps<typeof ControlPanel>> = {}) {
   const onSettingsOpen = vi.fn();
@@ -119,6 +107,87 @@ describe("ControlPanel", () => {
     fireEvent.click(checkbox);
 
     expect(screen.getByRole("button", { name: "ビュワーに表示" })).toBeEnabled();
+  });
+
+  it("自動表示OFFなら未選択でもビュワーに表示ボタンを有効化する", () => {
+    renderControlPanel({ media: EMPTY_MEDIA, mediaPath: "" });
+
+    const checkbox = screen.getByRole("checkbox", { name: /操作中に自動表示/ });
+    fireEvent.click(checkbox);
+
+    expect(screen.getByRole("button", { name: "ビュワーに表示" })).toBeEnabled();
+  });
+
+  it("自動表示OFFで未選択時にビュワーに表示すると背景表示で開く", async () => {
+    renderControlPanel({ media: EMPTY_MEDIA, mediaPath: "" });
+
+    fireEvent.click(screen.getByRole("checkbox", { name: /操作中に自動表示/ }));
+    vi.clearAllMocks();
+    fireEvent.click(screen.getByRole("button", { name: "ビュワーに表示" }));
+
+    await waitFor(() => {
+      expect(invokeMock).toHaveBeenCalledWith("ensure_viewer_window");
+      expect(invokeMock).toHaveBeenCalledWith("apply_viewer_settings", { settings: DEFAULT_SETTINGS });
+      expect(emitMock).toHaveBeenCalledWith("viewer:open-media", EMPTY_MEDIA);
+    });
+  });
+
+  it("自動表示OFFでファイル選択後にビュワーへプレビュー内容を送る", async () => {
+    const media = createMedia("pdf");
+    const managedItem = { name: "sample.pdf", path: media.path };
+
+    renderControlPanel({
+      media: EMPTY_MEDIA,
+      mediaPath: "",
+      managedMedia: [managedItem],
+      totalPages: 5
+    });
+
+    fireEvent.click(screen.getByRole("checkbox", { name: /操作中に自動表示/ }));
+    fireEvent.click(screen.getByRole("button", { name: "sample.pdf" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "ビュワーに表示" })).toBeEnabled();
+    });
+
+    vi.clearAllMocks();
+    fireEvent.click(screen.getByRole("button", { name: "ビュワーに表示" }));
+
+    await waitFor(() => {
+      expect(invokeMock).toHaveBeenCalledWith("ensure_viewer_window");
+      expect(invokeMock).toHaveBeenCalledWith("apply_viewer_settings", { settings: DEFAULT_SETTINGS });
+      expect(emitMock).toHaveBeenCalledWith(
+        "viewer:open-media",
+        expect.objectContaining({ path: media.path, mediaType: "pdf" })
+      );
+      expect(emitMock).toHaveBeenCalledWith("viewer:zoom-set", 1);
+      expect(emitMock).toHaveBeenCalledWith("viewer:rotation-set", 0);
+      expect(emitMock).toHaveBeenCalledWith("viewer:page-set", 1);
+    });
+  });
+
+  it("自動表示OFFで既存選択をビュワーへ状態同期する", async () => {
+    const media = createMedia("image");
+
+    renderControlPanel({
+      media,
+      mediaPath: media.path
+    });
+
+    fireEvent.click(screen.getByRole("checkbox", { name: /操作中に自動表示/ }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("checkbox", { name: /操作中に自動表示/ })).not.toBeChecked();
+    });
+
+    vi.clearAllMocks();
+    fireEvent.click(screen.getByRole("button", { name: "ビュワーに表示" }));
+
+    await waitFor(() => {
+      expect(invokeMock).toHaveBeenCalledWith("ensure_viewer_window");
+      expect(emitMock).toHaveBeenCalledWith("viewer:zoom-set", 1);
+      expect(emitMock).toHaveBeenCalledWith("viewer:rotation-set", 0);
+    });
   });
 
   it("動画表示時は自動表示チェックボックスを無効化する", () => {

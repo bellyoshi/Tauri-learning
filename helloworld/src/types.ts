@@ -30,3 +30,12 @@ export interface ManagedMediaItem {
   name: string;
   path: string;
 }
+
+export interface ViewportState {
+  scrollLeft: number;
+  scrollTop: number;
+  scrollWidth: number;
+  scrollHeight: number;
+  clientWidth: number;
+  clientHeight: number;
+}

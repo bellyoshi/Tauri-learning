@@ -12,6 +12,7 @@ interface Props {
   settings: ViewerSettings;
   canvasRef: RefObject<HTMLCanvasElement | null>;
   videoRef: RefObject<HTMLVideoElement | null>;
+  containerRef: RefObject<HTMLDivElement | null>;
 }
 
 export function MediaPreview({
@@ -22,10 +23,12 @@ export function MediaPreview({
   rotation,
   settings,
   canvasRef,
-  videoRef
+  videoRef,
+  containerRef
 }: Props) {
   return (
     <div
+      ref={containerRef}
       className="preview-stage"
       style={{ aspectRatio: String(aspectRatio), ...buildViewerBackgroundStyle(settings) }}
     >
