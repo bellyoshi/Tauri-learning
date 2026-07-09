@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import { listen } from "@tauri-apps/api/event";
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";
-import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import * as pdfjsLib from "pdfjs-dist";
 import { MediaPayload, VideoState, ViewerSettings } from "../types";
@@ -46,7 +46,8 @@ export function ViewerPanel({ media, currentPage, zoom, rotation, settings, onPd
   useEffect(() => {
     if (!pdfDoc || normalizedMedia.mediaType !== "pdf") return;
     const render = async () => {
-      const page = await pdfDoc.getPage(currentPage);
+      const safePage = Math.max(1, Math.min(currentPage, pdfDoc.numPages));
+      const page = await pdfDoc.getPage(safePage);
       const viewport = page.getViewport({ scale: zoom, rotation });
       const canvas = canvasRef.current;
       if (!canvas) return;
@@ -58,6 +59,28 @@ export function ViewerPanel({ media, currentPage, zoom, rotation, settings, onPd
     };
     void render();
   }, [pdfDoc, currentPage, zoom, rotation, normalizedMedia.mediaType]);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || normalizedMedia.mediaType !== "video") return;
+    const unlisten: Promise<(() => void)[]> = Promise.all([
+      listen<number>("viewer:video-seek", (event) => {
+        video.currentTime = event.payload;
+      }),
+      listen<number>("viewer:video-volume", (event) => {
+        video.volume = event.payload;
+      }),
+      listen("viewer:video-play", () => {
+        void video.play();
+      }),
+      listen("viewer:video-pause", () => {
+        video.pause();
+      })
+    ]);
+    return () => {
+      void unlisten.then((fns) => fns.forEach((fn) => fn()));
+    };
+  }, [normalizedMedia.mediaType, normalizedMedia.url]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -144,7 +167,7 @@ export function ViewerPanel({ media, currentPage, zoom, rotation, settings, onPd
         <div className="context-menu" style={{ left: contextPos.x, top: contextPos.y }}>
           <button onClick={() => invoke("toggle_titlebar")}>タイトルバー表示/非表示</button>
           <button onClick={() => invoke("toggle_viewer_mode")}>フルスクリーン/ウインドウ切替</button>
-          <button onClick={() => void getCurrentWebviewWindow().close()}>ウインドウを閉じる</button>
+          <button onClick={() => invoke("close_viewer_window")}>ウインドウを閉じる</button>
         </div>
       )}
     </div>

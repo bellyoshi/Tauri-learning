@@ -48,6 +48,7 @@ export default function App() {
       listen("viewer:page-prev", () => setCurrentPage((prev) => Math.max(prev - 1, 1))),
       listen("viewer:page-first", () => setCurrentPage(1)),
       listen("viewer:page-last", () => setCurrentPage(Math.max(1, totalPages))),
+      listen<number>("viewer:page-set", (event) => setCurrentPage(Math.max(1, event.payload))),
       listen("viewer:zoom-in", () => setZoom((prev) => Math.min(prev + 0.1, 10))),
       listen("viewer:zoom-out", () => setZoom((prev) => Math.max(prev - 0.1, 0.2))),
       listen("viewer:zoom-reset", () => setZoom(1)),
@@ -57,22 +58,6 @@ export default function App() {
         if (value === 0 || value === 90 || value === 180 || value === 270) {
           setRotation(value);
         }
-      }),
-      listen<number>("viewer:video-seek", (event) => {
-        const video = document.querySelector("video");
-        if (video) video.currentTime = event.payload;
-      }),
-      listen<number>("viewer:video-volume", (event) => {
-        const video = document.querySelector("video");
-        if (video) video.volume = event.payload;
-      }),
-      listen("viewer:video-play", () => {
-        const video = document.querySelector("video");
-        if (video) void video.play();
-      }),
-      listen("viewer:video-pause", () => {
-        const video = document.querySelector("video");
-        if (video) video.pause();
       }),
       listen<Partial<ViewerSettings>>("viewer:settings-updated", (event) =>
         setSettings((prev) => ({ ...prev, ...event.payload }))
@@ -88,7 +73,7 @@ export default function App() {
     return (
       <ViewerPanel
         media={media}
-        currentPage={Math.min(currentPage, totalPages)}
+        currentPage={currentPage}
         zoom={zoom}
         rotation={rotation}
         settings={settings}
@@ -113,7 +98,7 @@ export default function App() {
   return (
     <ControlPanel
       media={media}
-      currentPage={Math.min(currentPage, totalPages)}
+      currentPage={currentPage}
       totalPages={totalPages}
       zoom={zoom}
       rotation={rotation}

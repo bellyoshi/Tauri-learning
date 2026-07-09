@@ -341,6 +341,25 @@ export function ControlPanel(props: Props) {
     }
   };
 
+  const handleShowInViewer = async () => {
+    if (autoDisplay) return;
+    if (!normalizedMedia.path || normalizedMedia.mediaType === "none") return;
+
+    await invoke("ensure_viewer_window");
+    await invoke("apply_viewer_settings", { settings: props.settings });
+    const payload = await buildMediaPayload(normalizedMedia.path);
+    await emit("viewer:open-media", payload);
+    await emit("viewer:zoom-set", effectiveZoom);
+    await emit("viewer:rotation-set", effectiveRotation);
+    if (normalizedMedia.mediaType === "pdf") {
+      await emit("viewer:page-set", effectivePage);
+    }
+    if (normalizedMedia.mediaType === "video") {
+      await emit("viewer:video-seek", effectiveVideoState.currentTime);
+      await emit("viewer:video-volume", effectiveVideoState.volume);
+    }
+  };
+
   const openFile = async () => {
     const items = await invoke<ManagedMediaItem[]>("pick_and_import_media");
     props.onManagedMediaChange(items);
@@ -379,7 +398,9 @@ export function ControlPanel(props: Props) {
             />
             <span>操作中に自動表示</span>
           </label>
-          <button onClick={props.onSettingsOpen}>設定</button>
+          <button onClick={() => void handleShowInViewer()} disabled={autoDisplay || normalizedMedia.mediaType === "none"}>
+            ビュワーに表示
+          </button>
           <button onClick={() => invoke("toggle_viewer_mode")}>Viewer全画面切替</button>
         </div>
       </header>
@@ -507,7 +528,10 @@ export function ControlPanel(props: Props) {
       </div>
 
       <section className="block">
-        <h3>現在設定</h3>
+        <div className="row">
+          <h3>現在設定</h3>
+          <button onClick={props.onSettingsOpen}>設定変更</button>
+        </div>
         <p className="hint">モニター: {props.monitors.find((m) => m.index === props.settings.monitorIndex)?.name ?? "不明"}</p>
         <p className="hint">モード: {props.settings.viewerMode}</p>
       </section>

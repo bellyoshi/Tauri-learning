@@ -320,6 +320,37 @@ fn get_viewer_window_size(app: AppHandle) -> Option<WindowSize> {
 }
 
 #[tauri::command]
+fn close_viewer_window(app: AppHandle) {
+    if let Some(viewer) = app.get_webview_window(VIEWER_LABEL) {
+        let _ = viewer.close();
+    }
+}
+
+#[tauri::command]
+fn ensure_viewer_window(app: AppHandle) -> Result<(), String> {
+    let viewer = if let Some(win) = app.get_webview_window(VIEWER_LABEL) {
+        win
+    } else {
+        let created =
+            WebviewWindowBuilder::new(&app, VIEWER_LABEL, WebviewUrl::App("index.html".into()))
+                .title("Viewer")
+                .inner_size(1200.0, 900.0)
+                .build()
+                .map_err(|e| format!("Viewerウインドウ作成失敗: {e}"))?;
+        attach_window_persistence(&created);
+        let state = load_state(&app);
+        let has_saved = apply_saved_bounds(&created, &state);
+        if !has_saved {
+            auto_place_windows(&app);
+        }
+        created
+    };
+    let _ = viewer.show();
+    let _ = viewer.set_focus();
+    Ok(())
+}
+
+#[tauri::command]
 fn list_monitors(app: AppHandle) -> Vec<MonitorInfo> {
     let Some(control) = app.get_webview_window(CONTROL_LABEL) else {
         return vec![];
@@ -420,6 +451,8 @@ pub fn run() {
             toggle_titlebar,
             toggle_viewer_mode,
             get_viewer_window_size,
+            close_viewer_window,
+            ensure_viewer_window,
             list_monitors,
             apply_viewer_settings,
             pick_and_import_media,
