@@ -13,16 +13,29 @@ export function SettingsPanel({ settings, monitors, onChange }: Props) {
   const applySettings = async (patch: Partial<ViewerSettings>) => {
     const next = { ...settings, ...patch };
     onChange(next);
-    await invoke("apply_viewer_settings", { settings: next });
+    try {
+      await invoke("apply_viewer_settings", { settings: next });
+    } catch (error) {
+      onChange(settings);
+      const detail = error instanceof Error ? error.message : String(error);
+      console.error("設定の反映に失敗しました:", error);
+      window.alert(`設定の反映に失敗しました。\n${detail}`);
+    }
   };
 
   const chooseBackground = async () => {
-    const imagePath = await open({
-      multiple: false,
-      filters: [{ name: "Image", extensions: ["png", "jpg", "jpeg", "gif", "webp", "bmp"] }]
-    });
-    if (!imagePath || Array.isArray(imagePath)) return;
-    await applySettings({ backgroundImagePath: imagePath });
+    try {
+      const imagePath = await open({
+        multiple: false,
+        filters: [{ name: "Image", extensions: ["png", "jpg", "jpeg", "gif", "webp", "bmp"] }]
+      });
+      if (!imagePath || Array.isArray(imagePath)) return;
+      await applySettings({ backgroundImagePath: imagePath });
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error);
+      console.error("背景画像の選択に失敗しました:", error);
+      window.alert(`背景画像の選択に失敗しました。\n${detail}`);
+    }
   };
 
   return (

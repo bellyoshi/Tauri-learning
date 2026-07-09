@@ -21,12 +21,25 @@ export default function App() {
   const [settings, setSettings] = useState<ViewerSettings>(loadSettings());
   const [monitors, setMonitors] = useState<MonitorInfo[]>([]);
   const [managedMedia, setManagedMedia] = useState<ManagedMediaItem[]>([]);
+  const [settingsOpenError, setSettingsOpenError] = useState("");
   const [videoState, setVideoState] = useState<VideoState>({
     playing: false,
     currentTime: 0,
     duration: 0,
     volume: 1
   });
+
+  const invokeWithFallback = async <T,>(primary: string, fallback: string): Promise<T> => {
+    try {
+      return await invoke<T>(primary);
+    } catch (primaryError) {
+      const primaryMessage = primaryError instanceof Error ? primaryError.message : String(primaryError);
+      if (!primaryMessage.includes(`Command ${primary} not found`)) {
+        throw primaryError;
+      }
+      return invoke<T>(fallback);
+    }
+  };
 
   useEffect(() => {
     void invoke<MonitorInfo[]>("list_monitors").then(setMonitors);
@@ -92,8 +105,17 @@ export default function App() {
       managedMedia={managedMedia}
       monitors={monitors}
       settings={settings}
+      settingsOpenError={settingsOpenError}
       videoState={videoState}
-      onSettingsOpen={() => invoke("open_settings_window")}
+      onSettingsOpen={async () => {
+        setSettingsOpenError("");
+        try {
+          await invokeWithFallback("open_settings_window", "open_settings_window_cmd");
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          setSettingsOpenError(message || "設定ウインドウの起動に失敗しました。");
+        }
+      }}
       onManagedMediaChange={setManagedMedia}
       onCurrentMediaDeleted={resetCurrentMedia}
       onPdfMeta={(pages) => setTotalPages(Math.max(1, pages))}

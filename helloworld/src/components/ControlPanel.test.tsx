@@ -47,6 +47,7 @@ function renderControlPanel(overrides: Partial<React.ComponentProps<typeof Contr
     managedMedia: [],
     monitors: [{ index: 0, name: "Monitor 1" }],
     settings: DEFAULT_SETTINGS,
+    settingsOpenError: "",
     videoState: { playing: false, currentTime: 0, duration: 120, volume: 1 },
     onSettingsOpen,
     onManagedMediaChange,

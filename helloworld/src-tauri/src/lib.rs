@@ -15,8 +15,8 @@ use window::{
 };
 
 #[tauri::command(rename = "open_settings_window")]
-fn open_settings_window_cmd(app: AppHandle) {
-    open_settings_window(&app);
+fn open_settings_window_cmd(app: AppHandle) -> Result<(), String> {
+    open_settings_window(&app)
 }
 
 #[tauri::command(rename = "toggle_titlebar")]

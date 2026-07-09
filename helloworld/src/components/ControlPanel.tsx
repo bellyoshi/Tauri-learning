@@ -29,6 +29,7 @@ interface Props {
   managedMedia: ManagedMediaItem[];
   monitors: MonitorInfo[];
   settings: ViewerSettings;
+  settingsOpenError: string;
   videoState: VideoState;
   onSettingsOpen: () => void;
   onManagedMediaChange: (items: ManagedMediaItem[]) => void;
@@ -290,6 +291,7 @@ export function ControlPanel(props: Props) {
           モニター: {props.monitors.find((m) => m.index === props.settings.monitorIndex)?.name ?? "不明"}
         </p>
         <p className="hint">モード: {props.settings.viewerMode}</p>
+        {props.settingsOpenError && <p className="hint error-text">{props.settingsOpenError}</p>}
       </PanelSection>
     </div>
   );

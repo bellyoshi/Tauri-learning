@@ -211,7 +211,7 @@ pub fn ensure_windows(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-pub fn open_settings_window(app: &AppHandle) {
+pub fn open_settings_window(app: &AppHandle) -> Result<(), String> {
     let settings_window = if let Some(win) = app.get_webview_window(SETTINGS_LABEL) {
         win
     } else {
@@ -220,13 +220,20 @@ pub fn open_settings_window(app: &AppHandle) {
                 initialize_settings_window(app, &created);
                 created
             }
-            Err(_) => return,
+            Err(e) => return Err(format!("設定ウインドウ作成失敗: {e}")),
         }
     };
 
-    let _ = settings_window.unminimize();
-    let _ = settings_window.show();
-    let _ = settings_window.set_focus();
+    settings_window
+        .unminimize()
+        .map_err(|e| format!("設定ウインドウ最小化解除失敗: {e}"))?;
+    settings_window
+        .show()
+        .map_err(|e| format!("設定ウインドウ表示失敗: {e}"))?;
+    settings_window
+        .set_focus()
+        .map_err(|e| format!("設定ウインドウフォーカス失敗: {e}"))?;
+    Ok(())
 }
 
 pub fn toggle_titlebar(app: &AppHandle) {

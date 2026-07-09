@@ -89,6 +89,12 @@ button {
   font-size: 0.9rem;
 }
 
+.error-text {
+  color: #ff8f8f;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 .preview-selection {
   margin-top: 0;
   word-break: break-all;
