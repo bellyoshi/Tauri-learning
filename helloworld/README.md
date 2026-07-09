@@ -1,6 +1,23 @@
-# Tauri + Vanilla
+# Tauri Media Viewer
 
-This template should help get you started developing with Tauri in vanilla HTML, CSS and Javascript.
+Tauri + React で構成されたメディアビューワアプリです。
+
+## 開発
+
+```bash
+npm install
+npm start
+```
+
+## テスト
+
+テストの実行方法は [TESTING.md](./TESTING.md) を参照してください。
+
+```bash
+npm run test:run   # フロントエンド
+npm run test:rust  # Rust
+npm run test:all   # すべて
+```
 
 ## Recommended IDE Setup
 

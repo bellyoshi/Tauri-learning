@@ -89,13 +89,17 @@ button {
   font-size: 0.9rem;
 }
 
+.preview-selection {
+  margin-top: 0;
+  word-break: break-all;
+}
+
 .preview-stage {
   margin-top: 8px;
   width: 100%;
   max-width: 560px;
   border: 1px solid #3f557a;
   border-radius: 6px;
-  background: #0c1320;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -155,10 +159,132 @@ button {
   margin-top: 8px;
 }
 
+.managed-item-row {
+  display: flex;
+  gap: 6px;
+  align-items: stretch;
+}
+
+.managed-item-row.is-selected .managed-item {
+  border-color: #4a9eff;
+}
+
 .managed-item {
+  flex: 1;
   text-align: left;
-  width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.managed-item-delete {
+  flex-shrink: 0;
+  min-width: 52px;
+}
+
+.background-preview {
+  margin-top: 8px;
+  width: 100%;
+  height: 120px;
+  border: 1px solid #3f557a;
+  border-radius: 6px;
+}
+
+.help-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(8, 12, 20, 0.72);
+}
+
+.help-dialog {
+  width: min(560px, 100%);
+  max-height: min(80vh, 720px);
+  overflow: auto;
+  border: 1px solid #3f557a;
+  border-radius: 10px;
+  background: #1f2638;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+}
+
+.help-dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid #33425f;
+}
+
+.help-dialog-header h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.help-dialog-close {
+  min-width: 36px;
+  padding: 4px 10px;
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+.help-dialog-body {
+  padding: 16px;
+}
+
+.help-section + .help-section {
+  margin-top: 18px;
+}
+
+.help-section h3 {
+  margin: 0 0 8px;
+  font-size: 0.95rem;
+  color: #d7e5ff;
+}
+
+.help-list {
+  margin: 0;
+}
+
+.help-item {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid #2a3854;
+}
+
+.help-item:last-child {
+  border-bottom: none;
+}
+
+.help-item dt {
+  margin: 0;
+  font-family: Consolas, "Courier New", monospace;
+  color: #9ec2ff;
+}
+
+.help-item dd {
+  margin: 0;
+  color: #e8ecf3;
+}
+
+.help-item-note {
+  margin-left: 4px;
+  color: #a9bddf;
+  font-size: 0.9rem;
+}
+
+.help-notes {
+  margin: 0;
+  padding-left: 1.2rem;
+  color: #c2d3ef;
+}
+
+.help-notes li + li {
+  margin-top: 6px;
 }

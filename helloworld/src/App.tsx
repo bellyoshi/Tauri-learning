@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
-import { listen } from "@tauri-apps/api/event";
+import { emit } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { ControlPanel } from "./components/ControlPanel";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { ViewerPanel } from "./components/ViewerPanel";
+import { VIEWER_EVENTS } from "./events/viewerEvents";
 import { EMPTY_MEDIA, normalizeMediaPayload } from "./state/mediaState";
-import { DEFAULT_SETTINGS, loadSettings, saveSettings } from "./state/settingsState";
-import { ManagedMediaItem, MediaPayload, MonitorInfo, VideoState, ViewerSettings } from "./types";
+import { loadSettings, saveSettings } from "./state/settingsState";
+import { useViewerEventBridge } from "./hooks/useViewerEventBridge";
+import { ManagedMediaItem, MonitorInfo, VideoState, ViewerSettings } from "./types";
 
 export default function App() {
   const label = useMemo(() => getCurrentWebviewWindow().label, []);
@@ -36,38 +38,22 @@ export default function App() {
     saveSettings(settings);
   }, [settings]);
 
-  useEffect(() => {
-    const unlisten: Promise<(() => void)[]> = Promise.all([
-      listen<MediaPayload>("viewer:open-media", (event) => {
-        setMedia(normalizeMediaPayload(event.payload));
-        setCurrentPage(1);
-        setTotalPages(1);
-        setRotation(0);
-      }),
-      listen("viewer:page-next", () => setCurrentPage((prev) => Math.min(prev + 1, totalPages))),
-      listen("viewer:page-prev", () => setCurrentPage((prev) => Math.max(prev - 1, 1))),
-      listen("viewer:page-first", () => setCurrentPage(1)),
-      listen("viewer:page-last", () => setCurrentPage(Math.max(1, totalPages))),
-      listen<number>("viewer:page-set", (event) => setCurrentPage(Math.max(1, event.payload))),
-      listen("viewer:zoom-in", () => setZoom((prev) => Math.min(prev + 0.1, 10))),
-      listen("viewer:zoom-out", () => setZoom((prev) => Math.max(prev - 0.1, 0.2))),
-      listen("viewer:zoom-reset", () => setZoom(1)),
-      listen<number>("viewer:zoom-set", (event) => setZoom(Math.max(0.2, Math.min(event.payload, 10)))),
-      listen<number>("viewer:rotation-set", (event) => {
-        const value = event.payload;
-        if (value === 0 || value === 90 || value === 180 || value === 270) {
-          setRotation(value);
-        }
-      }),
-      listen<Partial<ViewerSettings>>("viewer:settings-updated", (event) =>
-        setSettings((prev) => ({ ...prev, ...event.payload }))
-      )
-    ]);
+  useViewerEventBridge(totalPages, {
+    setMedia: (payload) => setMedia(normalizeMediaPayload(payload)),
+    setCurrentPage,
+    setTotalPages,
+    setZoom,
+    setRotation,
+    setSettings
+  });
 
-    return () => {
-      void unlisten.then((fns) => fns.forEach((fn) => fn()));
-    };
-  }, [totalPages]);
+  const resetCurrentMedia = () => {
+    setMedia(EMPTY_MEDIA);
+    setCurrentPage(1);
+    setTotalPages(1);
+    setZoom(1);
+    setRotation(0);
+  };
 
   if (label === "viewer") {
     return (
@@ -109,6 +95,7 @@ export default function App() {
       videoState={videoState}
       onSettingsOpen={() => invoke("open_settings_window")}
       onManagedMediaChange={setManagedMedia}
+      onCurrentMediaDeleted={resetCurrentMedia}
       onPdfMeta={(pages) => setTotalPages(Math.max(1, pages))}
     />
   );

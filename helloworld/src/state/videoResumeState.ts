@@ -29,3 +29,10 @@ export function setVideoResumeSeconds(path: string, seconds: number): void {
   map[path] = Math.max(0, Math.round(seconds * 10) / 10);
   localStorage.setItem(KEY, JSON.stringify(map));
 }
+
+export function removeVideoResumeSeconds(path: string): void {
+  if (!path) return;
+  const map = loadMap();
+  delete map[path];
+  localStorage.setItem(KEY, JSON.stringify(map));
+}

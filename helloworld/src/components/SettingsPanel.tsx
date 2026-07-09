@@ -1,5 +1,6 @@
 import { open } from "@tauri-apps/plugin-dialog";
-import { convertFileSrc, invoke } from "@tauri-apps/api/core";
+import { invoke } from "@tauri-apps/api/core";
+import { buildViewerBackgroundStyle } from "../lib/viewerBackground";
 import { MonitorInfo, ViewerSettings } from "../types";
 
 interface Props {
@@ -9,14 +10,19 @@ interface Props {
 }
 
 export function SettingsPanel({ settings, monitors, onChange }: Props) {
+  const applySettings = async (patch: Partial<ViewerSettings>) => {
+    const next = { ...settings, ...patch };
+    onChange(next);
+    await invoke("apply_viewer_settings", { settings: next });
+  };
+
   const chooseBackground = async () => {
     const imagePath = await open({
       multiple: false,
       filters: [{ name: "Image", extensions: ["png", "jpg", "jpeg", "gif", "webp", "bmp"] }]
     });
     if (!imagePath || Array.isArray(imagePath)) return;
-    onChange({ ...settings, backgroundImagePath: imagePath });
-    await invoke("apply_viewer_settings", { settings: { ...settings, backgroundImagePath: imagePath } });
+    await applySettings({ backgroundImagePath: imagePath });
   };
 
   return (
@@ -29,11 +35,7 @@ export function SettingsPanel({ settings, monitors, onChange }: Props) {
         <input
           type="color"
           value={settings.backgroundColor}
-          onChange={async (e) => {
-            const next = { ...settings, backgroundColor: e.currentTarget.value };
-            onChange(next);
-            await invoke("apply_viewer_settings", { settings: next });
-          }}
+          onChange={(e) => void applySettings({ backgroundColor: e.currentTarget.value })}
         />
       </section>
 
@@ -41,30 +43,24 @@ export function SettingsPanel({ settings, monitors, onChange }: Props) {
         <label>背景画像</label>
         <div className="row">
           <button onClick={chooseBackground}>画像を選択</button>
-          <button
-            onClick={async () => {
-              const next = { ...settings, backgroundImagePath: "" };
-              onChange(next);
-              await invoke("apply_viewer_settings", { settings: next });
-            }}
-          >
-            クリア
-          </button>
+          <button onClick={() => void applySettings({ backgroundImagePath: "" })}>クリア</button>
         </div>
-        {settings.backgroundImagePath && (
-          <img className="thumb" src={convertFileSrc(settings.backgroundImagePath)} alt="background preview" />
-        )}
+      </section>
+
+      <section className="block">
+        <label>背景プレビュー</label>
+        <div
+          className="background-preview"
+          style={buildViewerBackgroundStyle(settings)}
+          aria-label="背景プレビュー"
+        />
       </section>
 
       <section className="block">
         <label>Viewer配置モニター</label>
         <select
           value={settings.monitorIndex}
-          onChange={async (e) => {
-            const next = { ...settings, monitorIndex: Number(e.currentTarget.value) };
-            onChange(next);
-            await invoke("apply_viewer_settings", { settings: next });
-          }}
+          onChange={(e) => void applySettings({ monitorIndex: Number(e.currentTarget.value) })}
         >
           {monitors.map((monitor) => (
             <option key={monitor.index} value={monitor.index}>
@@ -77,24 +73,8 @@ export function SettingsPanel({ settings, monitors, onChange }: Props) {
       <section className="block">
         <label>表示モード</label>
         <div className="row">
-          <button
-            onClick={async () => {
-              const next = { ...settings, viewerMode: "windowed" as const };
-              onChange(next);
-              await invoke("apply_viewer_settings", { settings: next });
-            }}
-          >
-            ウインドウ
-          </button>
-          <button
-            onClick={async () => {
-              const next = { ...settings, viewerMode: "fullscreen" as const };
-              onChange(next);
-              await invoke("apply_viewer_settings", { settings: next });
-            }}
-          >
-            フルスクリーン
-          </button>
+          <button onClick={() => void applySettings({ viewerMode: "windowed" })}>ウインドウ</button>
+          <button onClick={() => void applySettings({ viewerMode: "fullscreen" })}>フルスクリーン</button>
         </div>
       </section>
     </div>

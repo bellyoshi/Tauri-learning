@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
-import { convertFileSrc, invoke } from "@tauri-apps/api/core";
+import { invoke } from "@tauri-apps/api/core";
 import type { PDFDocumentProxy } from "pdfjs-dist";
-import * as pdfjsLib from "pdfjs-dist";
 import { MediaPayload, VideoState, ViewerSettings } from "../types";
 import { normalizeMediaPayload } from "../state/mediaState";
-import { getVideoResumeSeconds, setVideoResumeSeconds } from "../state/videoResumeState";
-
-pdfjsLib.GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/build/pdf.worker.mjs", import.meta.url).toString();
+import { VIEWER_EVENTS } from "../events/viewerEvents";
+import { buildViewerBackgroundStyle } from "../lib/viewerBackground";
+import { mediaTransformStyle } from "../lib/viewTransform";
+import { loadPdfDocument, renderPdfPageToCanvas } from "../lib/pdf/renderPdfPage";
+import { useVideoElement } from "../hooks/useVideoElement";
+import "../lib/pdf/setup";
 
 interface Props {
   media: MediaPayload;
@@ -33,7 +35,7 @@ export function ViewerPanel({ media, currentPage, zoom, rotation, settings, onPd
       return;
     }
     let mounted = true;
-    pdfjsLib.getDocument(mediaUrl).promise.then((doc) => {
+    loadPdfDocument(mediaUrl).then((doc) => {
       if (!mounted) return;
       setPdfDoc(doc);
       onPdfMeta(doc.numPages);
@@ -45,35 +47,25 @@ export function ViewerPanel({ media, currentPage, zoom, rotation, settings, onPd
 
   useEffect(() => {
     if (!pdfDoc || normalizedMedia.mediaType !== "pdf") return;
-    const render = async () => {
-      const safePage = Math.max(1, Math.min(currentPage, pdfDoc.numPages));
-      const page = await pdfDoc.getPage(safePage);
-      const viewport = page.getViewport({ scale: zoom, rotation });
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      const context = canvas.getContext("2d");
-      if (!context) return;
-      canvas.width = viewport.width;
-      canvas.height = viewport.height;
-      await page.render({ canvasContext: context, viewport }).promise;
-    };
-    void render();
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    void renderPdfPageToCanvas(canvas, { doc: pdfDoc, page: currentPage, zoom, rotation });
   }, [pdfDoc, currentPage, zoom, rotation, normalizedMedia.mediaType]);
 
   useEffect(() => {
     const video = videoRef.current;
     if (!video || normalizedMedia.mediaType !== "video") return;
-    const unlisten: Promise<(() => void)[]> = Promise.all([
-      listen<number>("viewer:video-seek", (event) => {
+    const unlisten = Promise.all([
+      listen<number>(VIEWER_EVENTS.VIDEO_SEEK, (event) => {
         video.currentTime = event.payload;
       }),
-      listen<number>("viewer:video-volume", (event) => {
+      listen<number>(VIEWER_EVENTS.VIDEO_VOLUME, (event) => {
         video.volume = event.payload;
       }),
-      listen("viewer:video-play", () => {
+      listen(VIEWER_EVENTS.VIDEO_PLAY, () => {
         void video.play();
       }),
-      listen("viewer:video-pause", () => {
+      listen(VIEWER_EVENTS.VIDEO_PAUSE, () => {
         video.pause();
       })
     ]);
@@ -82,55 +74,13 @@ export function ViewerPanel({ media, currentPage, zoom, rotation, settings, onPd
     };
   }, [normalizedMedia.mediaType, normalizedMedia.url]);
 
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-    const mediaPath = normalizedMedia.path;
-    const isVideo = normalizedMedia.mediaType === "video";
+  useVideoElement(videoRef, {
+    mediaPath: normalizedMedia.path,
+    mediaType: normalizedMedia.mediaType,
+    onStateChange: onVideoStateChange
+  });
 
-    const update = () => {
-      onVideoStateChange({
-        playing: !video.paused,
-        currentTime: video.currentTime || 0,
-        duration: Number.isFinite(video.duration) ? video.duration : 0,
-        volume: video.volume
-      });
-      if (isVideo && mediaPath) {
-        setVideoResumeSeconds(mediaPath, video.currentTime || 0);
-      }
-    };
-
-    const applyResumePosition = () => {
-      if (!isVideo || !mediaPath) return;
-      const resumeSeconds = getVideoResumeSeconds(mediaPath);
-      if (resumeSeconds <= 0) return;
-      const duration = Number.isFinite(video.duration) ? video.duration : resumeSeconds;
-      video.currentTime = Math.min(resumeSeconds, Math.max(0, duration));
-      update();
-    };
-
-    video.addEventListener("play", update);
-    video.addEventListener("pause", update);
-    video.addEventListener("timeupdate", update);
-    video.addEventListener("loadedmetadata", update);
-    video.addEventListener("loadedmetadata", applyResumePosition);
-    video.addEventListener("volumechange", update);
-    return () => {
-      video.removeEventListener("play", update);
-      video.removeEventListener("pause", update);
-      video.removeEventListener("timeupdate", update);
-      video.removeEventListener("loadedmetadata", update);
-      video.removeEventListener("loadedmetadata", applyResumePosition);
-      video.removeEventListener("volumechange", update);
-    };
-  }, [normalizedMedia.mediaType, normalizedMedia.path, normalizedMedia.url, onVideoStateChange]);
-
-  const wrapperStyle: React.CSSProperties = {
-    backgroundColor: settings.backgroundColor,
-    backgroundImage: settings.backgroundImagePath ? `url("${convertFileSrc(settings.backgroundImagePath)}")` : "none",
-    backgroundSize: "cover",
-    backgroundPosition: "center"
-  };
+  const wrapperStyle = buildViewerBackgroundStyle(settings);
 
   return (
     <div
@@ -148,7 +98,7 @@ export function ViewerPanel({ media, currentPage, zoom, rotation, settings, onPd
           className="media-image"
           src={mediaUrl}
           alt="viewer media"
-          style={{ transform: `scale(${zoom}) rotate(${rotation}deg)` }}
+          style={mediaTransformStyle(zoom, rotation)}
         />
       )}
       {normalizedMedia.mediaType === "video" && (
@@ -158,10 +108,9 @@ export function ViewerPanel({ media, currentPage, zoom, rotation, settings, onPd
           src={mediaUrl}
           autoPlay
           controls={false}
-          style={{ transform: `scale(${zoom}) rotate(${rotation}deg)` }}
+          style={mediaTransformStyle(zoom, rotation)}
         />
       )}
-      {normalizedMedia.mediaType === "none" && <p className="empty">表示するファイルを選択してください</p>}
 
       {contextPos && (
         <div className="context-menu" style={{ left: contextPos.x, top: contextPos.y }}>
