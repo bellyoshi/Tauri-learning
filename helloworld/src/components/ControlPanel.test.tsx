@@ -83,6 +83,19 @@ describe("ControlPanel", () => {
     expect(screen.queryByRole("heading", { name: "動画再生" })).not.toBeInTheDocument();
   });
 
+  it("自動表示ONでもPDFの総ページ数をプレビューに反映する", async () => {
+    const { onPdfMeta } = renderControlPanel({
+      media: createMedia("pdf"),
+      mediaPath: "sample.pdf",
+      totalPages: 1
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("1 / 5")).toBeInTheDocument();
+      expect(onPdfMeta).toHaveBeenCalledWith(5);
+    });
+  });
+
   it("動画表示時に動画再生セクションを表示する", () => {
     renderControlPanel({ media: createMedia("video"), mediaPath: "clip.mp4" });
     expect(screen.getByRole("heading", { name: "動画再生" })).toBeInTheDocument();

@@ -100,6 +100,19 @@ pub fn attach_viewer_window_handlers(window: &WebviewWindow) {
     });
 }
 
+pub fn attach_settings_window_handlers(window: &WebviewWindow) {
+    attach_window_persistence(window);
+    let cloned = window.clone();
+    window.on_window_event(move |event| {
+        if let WindowEvent::CloseRequested { api, .. } = event {
+            // Keep the settings window alive so it can be shown again quickly.
+            api.prevent_close();
+            save_window_bounds(&cloned);
+            let _ = cloned.hide();
+        }
+    });
+}
+
 fn apply_saved_bounds(window: &WebviewWindow, state: &PersistedState) -> bool {
     let Some(bounds) = state.windows.get(window.label()) else {
         return false;
@@ -173,7 +186,7 @@ fn initialize_viewer_window(app: &AppHandle, viewer: &WebviewWindow) {
 
 fn initialize_settings_window(app: &AppHandle, settings: &WebviewWindow) {
     let _ = settings.set_always_on_top(true);
-    attach_window_persistence(settings);
+    attach_settings_window_handlers(settings);
     let state = load_state(app);
     let _ = apply_saved_bounds(settings, &state);
 }
@@ -204,7 +217,7 @@ pub fn ensure_windows(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
         }
     }
     if let Some(settings) = app_handle.get_webview_window(SETTINGS_LABEL) {
-        attach_window_persistence(&settings);
+        attach_settings_window_handlers(&settings);
         let _ = apply_saved_bounds(&settings, &state);
     }
 

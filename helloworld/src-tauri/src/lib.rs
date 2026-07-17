@@ -9,49 +9,46 @@ use tauri_plugin_dialog::DialogExt;
 
 use media::{collect_managed_media, delete_managed_media_file, managed_media_dir, unique_destination_path};
 use models::{ManagedMediaItem, ViewerSettings};
-use window::{
-    apply_viewer_settings, close_viewer_window, ensure_viewer_window, ensure_windows,
-    get_viewer_window_size, list_monitors, open_settings_window, toggle_titlebar, toggle_viewer_mode,
-};
+use window::ensure_windows;
 
-#[tauri::command(rename = "open_settings_window")]
-fn open_settings_window_cmd(app: AppHandle) -> Result<(), String> {
-    open_settings_window(&app)
+#[tauri::command]
+fn open_settings_window(app: AppHandle) -> Result<(), String> {
+    window::open_settings_window(&app)
 }
 
-#[tauri::command(rename = "toggle_titlebar")]
-fn toggle_titlebar_cmd(app: AppHandle) {
-    toggle_titlebar(&app);
+#[tauri::command]
+fn toggle_titlebar(app: AppHandle) {
+    window::toggle_titlebar(&app);
 }
 
-#[tauri::command(rename = "toggle_viewer_mode")]
-fn toggle_viewer_mode_cmd(app: AppHandle) {
-    toggle_viewer_mode(&app);
+#[tauri::command]
+fn toggle_viewer_mode(app: AppHandle) {
+    window::toggle_viewer_mode(&app);
 }
 
-#[tauri::command(rename = "get_viewer_window_size")]
-fn get_viewer_window_size_cmd(app: AppHandle) -> Option<models::WindowSize> {
-    get_viewer_window_size(&app)
+#[tauri::command]
+fn get_viewer_window_size(app: AppHandle) -> Option<models::WindowSize> {
+    window::get_viewer_window_size(&app)
 }
 
-#[tauri::command(rename = "close_viewer_window")]
-fn close_viewer_window_cmd(app: AppHandle) {
-    close_viewer_window(&app);
+#[tauri::command]
+fn close_viewer_window(app: AppHandle) {
+    window::close_viewer_window(&app);
 }
 
-#[tauri::command(rename = "ensure_viewer_window")]
-fn ensure_viewer_window_cmd(app: AppHandle) -> Result<(), String> {
-    ensure_viewer_window(&app)
+#[tauri::command]
+fn ensure_viewer_window(app: AppHandle) -> Result<(), String> {
+    window::ensure_viewer_window(&app)
 }
 
-#[tauri::command(rename = "list_monitors")]
-fn list_monitors_cmd(app: AppHandle) -> Vec<models::MonitorInfo> {
-    list_monitors(&app)
+#[tauri::command]
+fn list_monitors(app: AppHandle) -> Vec<models::MonitorInfo> {
+    window::list_monitors(&app)
 }
 
-#[tauri::command(rename = "apply_viewer_settings")]
-fn apply_viewer_settings_cmd(app: AppHandle, settings: ViewerSettings) {
-    apply_viewer_settings(&app, settings);
+#[tauri::command]
+fn apply_viewer_settings(app: AppHandle, settings: ViewerSettings) {
+    window::apply_viewer_settings(&app, settings);
 }
 
 #[tauri::command]
@@ -100,14 +97,14 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .setup(ensure_windows)
         .invoke_handler(tauri::generate_handler![
-            open_settings_window_cmd,
-            toggle_titlebar_cmd,
-            toggle_viewer_mode_cmd,
-            get_viewer_window_size_cmd,
-            close_viewer_window_cmd,
-            ensure_viewer_window_cmd,
-            list_monitors_cmd,
-            apply_viewer_settings_cmd,
+            open_settings_window,
+            toggle_titlebar,
+            toggle_viewer_mode,
+            get_viewer_window_size,
+            close_viewer_window,
+            ensure_viewer_window,
+            list_monitors,
+            apply_viewer_settings,
             pick_and_import_media,
             list_managed_media,
             delete_managed_media

@@ -110,10 +110,10 @@ export function ControlPanel(props: Props) {
     zoom: effectiveZoom,
     rotation: effectiveRotation,
     onPageCount: (pages) => {
+      const total = Math.max(1, pages);
+      setPreviewTotalPages(total);
       if (autoDisplay) {
-        props.onPdfMeta(pages);
-      } else {
-        setPreviewTotalPages(Math.max(1, pages));
+        props.onPdfMeta(total);
       }
     }
   });

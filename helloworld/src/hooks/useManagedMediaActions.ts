@@ -63,25 +63,12 @@ export function useManagedMediaActions({
   } = preview;
 
   const ensureViewerWindow = useCallback(async () => {
-    try {
-      await invoke("ensure_viewer_window");
-    } catch (primaryError) {
-      // Fallback for environments that expose command without rename alias.
-      await invoke("ensure_viewer_window_cmd").catch(() => {
-        throw primaryError;
-      });
-    }
+    await invoke("ensure_viewer_window");
   }, []);
 
   const ensureViewerReady = useCallback(async () => {
     await ensureViewerWindow();
-    try {
-      await invoke("apply_viewer_settings", { settings });
-    } catch (primaryError) {
-      await invoke("apply_viewer_settings_cmd", { settings }).catch(() => {
-        throw primaryError;
-      });
-    }
+    await invoke("apply_viewer_settings", { settings });
   }, [ensureViewerWindow, settings]);
 
   const syncClearToViewer = useCallback(async () => {

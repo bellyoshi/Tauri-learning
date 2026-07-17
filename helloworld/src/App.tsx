@@ -29,18 +29,6 @@ export default function App() {
     volume: 1
   });
 
-  const invokeWithFallback = async <T,>(primary: string, fallback: string): Promise<T> => {
-    try {
-      return await invoke<T>(primary);
-    } catch (primaryError) {
-      const primaryMessage = primaryError instanceof Error ? primaryError.message : String(primaryError);
-      if (!primaryMessage.includes(`Command ${primary} not found`)) {
-        throw primaryError;
-      }
-      return invoke<T>(fallback);
-    }
-  };
-
   useEffect(() => {
     void invoke<MonitorInfo[]>("list_monitors").then(setMonitors);
     void invoke("apply_viewer_settings", { settings: loadSettings() });
@@ -110,7 +98,7 @@ export default function App() {
       onSettingsOpen={async () => {
         setSettingsOpenError("");
         try {
-          await invokeWithFallback("open_settings_window", "open_settings_window_cmd");
+          await invoke("open_settings_window");
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
           setSettingsOpenError(message || "設定ウインドウの起動に失敗しました。");
