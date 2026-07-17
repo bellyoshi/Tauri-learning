@@ -341,23 +341,64 @@ fn move_viewer_to_monitor(app: &AppHandle, monitor_index: usize) {
     let Some(monitor) = monitors.get(monitor_index) else {
         return;
     };
+    // Windows ではフルスクリーン中の set_position が FS を解除し、
+    // タイトルバーだけ消えた中途半端な状態になるため、必ず先に解除する。
+    if viewer.is_fullscreen().unwrap_or(false) {
+        let _ = viewer.set_fullscreen(false);
+    }
     let _ = viewer.set_position(PhysicalPosition::new(
         monitor.position().x + 20,
         monitor.position().y + 20,
     ));
 }
 
+fn viewer_is_on_monitor(app: &AppHandle, viewer: &WebviewWindow, monitor_index: usize) -> bool {
+    let Some(control) = app.get_webview_window(CONTROL_LABEL) else {
+        return false;
+    };
+    let Ok(monitors) = control.available_monitors() else {
+        return false;
+    };
+    let Some(monitor) = monitors.get(monitor_index) else {
+        return false;
+    };
+    let Ok(pos) = viewer.outer_position() else {
+        return false;
+    };
+    let mpos = monitor.position();
+    let msize = monitor.size();
+    pos.x >= mpos.x
+        && pos.y >= mpos.y
+        && pos.x < mpos.x + msize.width as i32
+        && pos.y < mpos.y + msize.height as i32
+}
+
 pub fn apply_viewer_settings(app: &AppHandle, settings: ViewerSettings) {
     if let Some(viewer) = app.get_webview_window(VIEWER_LABEL) {
+        let is_fullscreen = viewer.is_fullscreen().unwrap_or(false);
         match settings.viewer_mode {
             ViewerMode::Fullscreen => {
-                let _ = viewer.set_fullscreen(true);
+                // 先に配置してからフルスクリーンにする。
+                // set_fullscreen のあとに set_position すると Windows で FS が壊れる。
+                if is_fullscreen {
+                    if !viewer_is_on_monitor(app, &viewer, settings.monitor_index) {
+                        move_viewer_to_monitor(app, settings.monitor_index);
+                        let _ = viewer.set_fullscreen(true);
+                    }
+                } else {
+                    move_viewer_to_monitor(app, settings.monitor_index);
+                    let _ = viewer.set_fullscreen(true);
+                }
             }
             ViewerMode::Windowed => {
-                let _ = viewer.set_fullscreen(false);
+                if is_fullscreen {
+                    let _ = viewer.set_fullscreen(false);
+                }
+                // FS 失敗後に装飾だけ消えた状態から復帰できるようにする
+                let _ = viewer.set_decorations(true);
+                move_viewer_to_monitor(app, settings.monitor_index);
             }
         }
     }
-    move_viewer_to_monitor(app, settings.monitor_index);
     let _ = app.emit("viewer:settings-updated", &settings);
 }
