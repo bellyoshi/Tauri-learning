@@ -5,11 +5,13 @@ import { VideoState } from "../types";
 interface Options {
   mediaPath: string;
   mediaType: string;
+  /** プレビュー側のみ再開位置を永続化する（ビュワーとの競合を避ける） */
+  persistResume?: boolean;
   onStateChange?: (state: VideoState) => void;
 }
 
 export function useVideoElement(videoRef: RefObject<HTMLVideoElement | null>, options: Options) {
-  const { mediaPath, mediaType, onStateChange } = options;
+  const { mediaPath, mediaType, persistResume = false, onStateChange } = options;
   const isVideo = mediaType === "video";
 
   useEffect(() => {
@@ -24,7 +26,7 @@ export function useVideoElement(videoRef: RefObject<HTMLVideoElement | null>, op
         volume: video.volume
       };
       onStateChange?.(state);
-      if (isVideo && mediaPath) {
+      if (persistResume && isVideo && mediaPath) {
         setVideoResumeSeconds(mediaPath, video.currentTime || 0);
       }
     };
@@ -53,5 +55,5 @@ export function useVideoElement(videoRef: RefObject<HTMLVideoElement | null>, op
       video.removeEventListener("loadedmetadata", applyResumePosition);
       video.removeEventListener("volumechange", update);
     };
-  }, [isVideo, mediaPath, mediaType, onStateChange, videoRef]);
+  }, [isVideo, mediaPath, mediaType, onStateChange, persistResume, videoRef]);
 }

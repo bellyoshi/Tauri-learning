@@ -98,6 +98,7 @@ export function ViewerPanel({ media, currentPage, zoom, rotation, settings, onPd
   useVideoElement(videoRef, {
     mediaPath: normalizedMedia.path,
     mediaType: normalizedMedia.mediaType,
+    persistResume: false,
     onStateChange: onVideoStateChange
   });
 

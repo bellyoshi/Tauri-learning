@@ -1,4 +1,4 @@
-import { MediaPayload, MediaType } from "../types";
+import { MediaPayload, MediaType } from "../../types";
 
 const MEDIA_FILE_NAMES: Record<Exclude<MediaType, "none">, string> = {
   pdf: "sample.pdf",

@@ -1,11 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { emit } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { ControlPanel } from "./components/ControlPanel";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { ViewerPanel } from "./components/ViewerPanel";
-import { VIEWER_EVENTS } from "./events/viewerEvents";
 import { EMPTY_MEDIA, normalizeMediaPayload } from "./state/mediaState";
 import { loadSettings, saveSettings } from "./state/settingsState";
 import { useViewerEventBridge } from "./hooks/useViewerEventBridge";

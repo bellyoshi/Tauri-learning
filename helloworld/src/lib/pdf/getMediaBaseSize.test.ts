@@ -74,7 +74,7 @@ describe("getMediaBaseSize", () => {
     const originalCreateElement = document.createElement.bind(document);
     vi.spyOn(document, "createElement").mockImplementation((tagName: string) => {
       if (tagName === "video") {
-        const element = originalCreateElement("div") as HTMLVideoElement;
+        const element = originalCreateElement("div") as unknown as HTMLVideoElement;
         Object.defineProperty(element, "videoWidth", { value: 1920 });
         Object.defineProperty(element, "videoHeight", { value: 1080 });
         queueMicrotask(() => element.onloadedmetadata?.(new Event("loadedmetadata")));

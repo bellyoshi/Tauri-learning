@@ -90,6 +90,12 @@ export function usePreviewState(source: PreviewSource) {
     setPreviewTotalPages(1);
     setPreviewZoom(1);
     setPreviewRotation(0);
+    setPreviewVideoState({
+      playing: false,
+      currentTime: 0,
+      duration: 0,
+      volume: 1
+    });
   }, []);
 
   return {

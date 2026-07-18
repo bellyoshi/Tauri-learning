@@ -10,9 +10,9 @@ interface Props {
   zoom: number;
   rotation: number;
   settings: ViewerSettings;
-  canvasRef: RefObject<HTMLCanvasElement | null>;
-  videoRef: RefObject<HTMLVideoElement | null>;
-  containerRef: RefObject<HTMLDivElement | null>;
+  canvasRef: RefObject<HTMLCanvasElement>;
+  videoRef: RefObject<HTMLVideoElement>;
+  containerRef: RefObject<HTMLDivElement>;
 }
 
 export function MediaPreview({
@@ -40,7 +40,7 @@ export function MediaPreview({
           ref={videoRef}
           className="media-video"
           src={mediaUrl}
-          controls
+          controls={false}
           muted
           style={mediaTransformStyle(zoom, rotation)}
         />

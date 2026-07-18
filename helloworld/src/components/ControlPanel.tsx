@@ -92,6 +92,8 @@ export function ControlPanel(props: Props) {
       effectiveRotation,
       effectiveVideoState,
       setPreviewPage,
+      setPreviewZoom,
+      setPreviewRotation,
       setPreviewMedia,
       resetPreview,
       zoomSet: actions.zoomSet
@@ -121,6 +123,7 @@ export function ControlPanel(props: Props) {
   useVideoElement(previewVideoRef, {
     mediaPath: normalizedMedia.path,
     mediaType: normalizedMedia.mediaType,
+    persistResume: true,
     onStateChange: setPreviewVideoState
   });
 
@@ -134,7 +137,7 @@ export function ControlPanel(props: Props) {
     onZoomOut: actions.zoomOut,
     onZoomReset: actions.zoomReset,
     onRotateRight90: actions.rotateRight90,
-    onDeleteCurrent: props.mediaPath ? mediaActions.deleteCurrentManagedItem : undefined
+    onDeleteCurrent: normalizedMedia.path ? mediaActions.deleteCurrentManagedItem : undefined
   });
 
   const handleAutoDisplayChange = (value: boolean) => {
@@ -215,13 +218,13 @@ export function ControlPanel(props: Props) {
           <PanelSection title="取り込んだファイル一覧">
             <ManagedMediaList
               items={props.managedMedia}
-              selectedPath={props.mediaPath}
+              selectedPath={normalizedMedia.path}
               onOpen={(item) => void mediaActions.openManagedItem(item)}
               onDelete={(item) => void mediaActions.deleteManagedItem(item)}
             />
             <button
               type="button"
-              disabled={!props.mediaPath}
+              disabled={!normalizedMedia.path}
               onClick={() => void mediaActions.clearSelection()}
             >
               選択解除
@@ -231,7 +234,7 @@ export function ControlPanel(props: Props) {
 
         <div className="control-center">
           <PanelSection title="プレビュー">
-            <p className="hint preview-selection">{props.mediaPath || "未選択"}</p>
+            <p className="hint preview-selection">{normalizedMedia.path || "未選択"}</p>
             <MediaPreview
               mediaType={normalizedMedia.mediaType}
               mediaUrl={normalizedMedia.url}

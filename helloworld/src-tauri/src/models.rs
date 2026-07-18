@@ -50,6 +50,13 @@ pub struct ManagedMediaItem {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct ImportMediaResult {
+    pub items: Vec<ManagedMediaItem>,
+    pub imported: ManagedMediaItem,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct WindowSize {
     pub width: u32,
     pub height: u32,

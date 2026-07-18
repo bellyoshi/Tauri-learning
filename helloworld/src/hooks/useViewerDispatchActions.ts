@@ -1,8 +1,8 @@
 import { RefObject, useMemo, type Dispatch, type SetStateAction } from "react";
 import { VIEWER_EVENTS } from "../events/viewerEvents";
-import { zoomIn, zoomOut } from "../lib/viewTransform";
+import { clampZoom, zoomIn, zoomOut } from "../lib/viewTransform";
 
-type Dispatch = (event: string, payload: unknown | undefined, local: () => void) => void;
+type ViewerDispatch = (event: string, payload: unknown | undefined, local: () => void) => void;
 
 interface PreviewSetters {
   setPreviewPage: Dispatch<SetStateAction<number>>;
@@ -11,7 +11,7 @@ interface PreviewSetters {
 }
 
 interface Params extends PreviewSetters {
-  dispatch: Dispatch;
+  dispatch: ViewerDispatch;
   effectiveTotalPages: number;
   effectiveRotation: number;
   videoRef: RefObject<HTMLVideoElement | null>;
@@ -44,7 +44,8 @@ export function useViewerDispatchActions({
       zoomIn: () => dispatch(VIEWER_EVENTS.ZOOM_IN, undefined, () => setPreviewZoom((prev) => zoomIn(prev))),
       zoomOut: () => dispatch(VIEWER_EVENTS.ZOOM_OUT, undefined, () => setPreviewZoom((prev) => zoomOut(prev))),
       zoomReset: () => dispatch(VIEWER_EVENTS.ZOOM_RESET, undefined, () => setPreviewZoom(1)),
-      zoomSet: (value: number) => dispatch(VIEWER_EVENTS.ZOOM_SET, value, () => setPreviewZoom(value)),
+      zoomSet: (value: number) =>
+        dispatch(VIEWER_EVENTS.ZOOM_SET, clampZoom(value), () => setPreviewZoom(clampZoom(value))),
       rotateRight90: () => {
         const next = (effectiveRotation + 90) % 360;
         dispatch(VIEWER_EVENTS.ROTATION_SET, next, () => setPreviewRotation(next));
@@ -62,7 +63,7 @@ export function useViewerDispatchActions({
         }),
       videoVolume: (value: number) =>
         dispatch(VIEWER_EVENTS.VIDEO_VOLUME, value, () => {
-          if (videoRef.current) videoRef.current.volume = value;
+          if (videoRef.current) videoRef.current.volume = Math.min(1, Math.max(0, value));
         })
     }),
     [

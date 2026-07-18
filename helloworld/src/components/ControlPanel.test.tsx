@@ -4,18 +4,21 @@ import { ControlPanel } from "./ControlPanel";
 import { EMPTY_MEDIA } from "../state/mediaState";
 import { DEFAULT_SETTINGS } from "../state/settingsState";
 import { createMedia } from "../test/fixtures/media";
-const invokeMock = vi.fn();
-const emitMock = vi.fn();
-const listenMock = vi.fn(() => Promise.resolve(() => {}));
+
+const { invokeMock, emitMock, listenMock } = vi.hoisted(() => ({
+  invokeMock: vi.fn(),
+  emitMock: vi.fn(),
+  listenMock: vi.fn(() => Promise.resolve(() => {}))
+}));
 
 vi.mock("@tauri-apps/api/core", () => ({
-  invoke: (...args: unknown[]) => invokeMock(...args),
+  invoke: invokeMock,
   convertFileSrc: (path: string) => `asset://localhost/${path}`
 }));
 
 vi.mock("@tauri-apps/api/event", () => ({
-  emit: (...args: unknown[]) => emitMock(...args),
-  listen: (...args: unknown[]) => listenMock(...args)
+  emit: emitMock,
+  listen: listenMock
 }));
 
 vi.mock("pdfjs-dist", () => ({

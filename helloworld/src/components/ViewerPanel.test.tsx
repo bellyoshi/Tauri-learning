@@ -16,8 +16,8 @@ const windowApiMock = {
 };
 
 vi.mock("@tauri-apps/api/event", () => ({
-  emit: (...args: unknown[]) => Promise.resolve(emitMock(...args)),
-  listen: (...args: unknown[]) => Promise.resolve(listenMock(...args))
+  emit: (...args: unknown[]) => Promise.resolve(emitMock(...(args as []))),
+  listen: (...args: unknown[]) => Promise.resolve(listenMock(...(args as [])))
 }));
 
 vi.mock("@tauri-apps/api/webviewWindow", () => ({
@@ -25,7 +25,7 @@ vi.mock("@tauri-apps/api/webviewWindow", () => ({
 }));
 
 vi.mock("@tauri-apps/api/core", () => ({
-  invoke: (...args: unknown[]) => Promise.resolve(invokeMock(...args)),
+  invoke: (...args: unknown[]) => Promise.resolve(invokeMock(...(args as []))),
   convertFileSrc: (path: string) => `asset://localhost/${path}`
 }));
 

@@ -12,7 +12,7 @@ export function useViewerVideoCommands(videoRef: RefObject<HTMLVideoElement | nu
         video.currentTime = event.payload;
       }),
       listen<number>(VIEWER_EVENTS.VIDEO_VOLUME, (event) => {
-        video.volume = event.payload;
+        video.volume = Math.min(1, Math.max(0, event.payload));
       }),
       listen(VIEWER_EVENTS.VIDEO_PLAY, () => {
         void video.play();

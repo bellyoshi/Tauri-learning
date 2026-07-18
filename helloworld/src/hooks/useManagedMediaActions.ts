@@ -1,7 +1,7 @@
 import { type Dispatch, type SetStateAction, useCallback } from "react";
 import { emit } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
-import { ManagedMediaItem, MediaPayload, ViewerSettings } from "../types";
+import { ImportMediaResult, ManagedMediaItem, MediaPayload, ViewerSettings } from "../types";
 import { buildMediaPayload, EMPTY_MEDIA } from "../state/mediaState";
 import { removeVideoResumeSeconds } from "../state/videoResumeState";
 import { getMediaBaseSize } from "../lib/pdf/getMediaBaseSize";
@@ -16,6 +16,8 @@ interface PreviewControls {
   effectiveRotation: number;
   effectiveVideoState: { currentTime: number; volume: number };
   setPreviewPage: Dispatch<SetStateAction<number>>;
+  setPreviewZoom: Dispatch<SetStateAction<number>>;
+  setPreviewRotation: Dispatch<SetStateAction<number>>;
   setPreviewMedia: (media: MediaPayload | null) => void;
   resetPreview: () => void;
   zoomSet: (value: number) => void;
@@ -57,10 +59,13 @@ export function useManagedMediaActions({
     effectiveRotation,
     effectiveVideoState,
     setPreviewPage,
+    setPreviewZoom,
+    setPreviewRotation,
     setPreviewMedia,
     resetPreview,
     zoomSet
   } = preview;
+  const selectedPath = normalizedMedia.path;
 
   const ensureViewerWindow = useCallback(async () => {
     await invoke("ensure_viewer_window");
@@ -71,34 +76,39 @@ export function useManagedMediaActions({
     await invoke("apply_viewer_settings", { settings });
   }, [ensureViewerWindow, settings]);
 
-  const syncClearToViewer = useCallback(async () => {
-    resetPreview();
+  const clearViewerMedia = useCallback(async () => {
     onCurrentMediaDeleted();
-    if (autoDisplay) {
-      await emit(VIEWER_EVENTS.OPEN_MEDIA, EMPTY_MEDIA);
-    }
-  }, [autoDisplay, onCurrentMediaDeleted, resetPreview]);
+    await emit(VIEWER_EVENTS.OPEN_MEDIA, EMPTY_MEDIA);
+  }, [onCurrentMediaDeleted]);
 
   const openMedia = useCallback(
     async (path: string) => {
       const payload = await buildMediaPayload(path);
       setPreviewMedia(payload);
       setPreviewPage(1);
+      setPreviewZoom(1);
+      setPreviewRotation(0);
       if (autoDisplay) {
         await ensureViewerReady();
         await emit(VIEWER_EVENTS.OPEN_MEDIA, payload);
       }
     },
-    [autoDisplay, ensureViewerReady, setPreviewMedia, setPreviewPage]
+    [
+      autoDisplay,
+      ensureViewerReady,
+      setPreviewMedia,
+      setPreviewPage,
+      setPreviewRotation,
+      setPreviewZoom
+    ]
   );
 
   const openFile = useCallback(async () => {
     try {
-      const items = await invoke<ManagedMediaItem[]>("pick_and_import_media");
-      onManagedMediaChange(items);
-      const latest = items.at(-1);
-      if (!latest) return;
-      await openMedia(latest.path);
+      const result = await invoke<ImportMediaResult | null>("pick_and_import_media");
+      if (!result) return;
+      onManagedMediaChange(result.items);
+      await openMedia(result.imported.path);
     } catch (error) {
       notifyActionError("ファイルの取り込み", error);
     }
@@ -123,29 +133,47 @@ export function useManagedMediaActions({
         onManagedMediaChange(items);
         removeVideoResumeSeconds(item.path);
 
-        if (mediaPath !== item.path) return;
-        await syncClearToViewer();
+        const wasPreview = selectedPath === item.path;
+        const wasViewer = mediaPath === item.path;
+        if (!wasPreview && !wasViewer) return;
+
+        if (wasPreview) {
+          resetPreview();
+        }
+        if (wasViewer || (wasPreview && autoDisplay)) {
+          await clearViewerMedia();
+        }
       } catch (error) {
         notifyActionError(`「${item.name}」の削除`, error);
       }
     },
-    [mediaPath, onManagedMediaChange, syncClearToViewer]
+    [
+      autoDisplay,
+      clearViewerMedia,
+      mediaPath,
+      onManagedMediaChange,
+      resetPreview,
+      selectedPath
+    ]
   );
 
   const deleteCurrentManagedItem = useCallback(() => {
-    const current = managedMedia.find((item) => item.path === mediaPath);
+    const current = managedMedia.find((item) => item.path === selectedPath);
     if (!current) return;
     void deleteManagedItem(current);
-  }, [deleteManagedItem, managedMedia, mediaPath]);
+  }, [deleteManagedItem, managedMedia, selectedPath]);
 
   const clearSelection = useCallback(async () => {
-    if (!mediaPath) return;
+    if (!selectedPath) return;
     try {
-      await syncClearToViewer();
+      resetPreview();
+      if (autoDisplay || mediaPath === selectedPath) {
+        await clearViewerMedia();
+      }
     } catch (error) {
       notifyActionError("選択解除", error);
     }
-  }, [mediaPath, syncClearToViewer]);
+  }, [autoDisplay, clearViewerMedia, mediaPath, resetPreview, selectedPath]);
 
   const handleFitZoom = useCallback(
     async (mode: "width" | "whole") => {

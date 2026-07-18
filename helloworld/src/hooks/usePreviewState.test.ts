@@ -143,6 +143,12 @@ describe("usePreviewState", () => {
     expect(result.current.previewZoom).toBe(1);
     expect(result.current.previewRotation).toBe(0);
     expect(result.current.previewMedia).toBeNull();
+    expect(result.current.previewVideoState).toEqual({
+      playing: false,
+      currentTime: 0,
+      duration: 0,
+      volume: 1
+    });
   });
 
   it("編集中はソース側が変わってもプレビューを維持する", () => {

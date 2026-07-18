@@ -8,7 +8,7 @@ use tauri::AppHandle;
 use tauri_plugin_dialog::DialogExt;
 
 use media::{collect_managed_media, delete_managed_media_file, managed_media_dir, unique_destination_path};
-use models::{ManagedMediaItem, ViewerSettings};
+use models::{ImportMediaResult, ManagedMediaItem, ViewerSettings};
 use window::ensure_windows;
 
 #[tauri::command]
@@ -52,7 +52,7 @@ fn apply_viewer_settings(app: AppHandle, settings: ViewerSettings) {
 }
 
 #[tauri::command]
-async fn pick_and_import_media(app: AppHandle) -> Result<Vec<ManagedMediaItem>, String> {
+async fn pick_and_import_media(app: AppHandle) -> Result<Option<ImportMediaResult>, String> {
     let (tx, rx) = tokio::sync::oneshot::channel();
     app.dialog()
         .file()
@@ -70,13 +70,23 @@ async fn pick_and_import_media(app: AppHandle) -> Result<Vec<ManagedMediaItem>, 
         .await
         .map_err(|_| "ファイル選択を受け取れませんでした".to_string())?;
     let Some(source) = picked else {
-        return list_managed_media(app);
+        return Ok(None);
     };
 
     let target_dir = managed_media_dir(&app)?;
     let destination = unique_destination_path(&target_dir, &source);
     fs::copy(&source, &destination).map_err(|e| format!("ファイルコピー失敗: {e}"))?;
-    Ok(collect_managed_media(&target_dir))
+    let imported = ManagedMediaItem {
+        name: destination
+            .file_name()
+            .map(|n| n.to_string_lossy().to_string())
+            .unwrap_or_else(|| "imported".to_string()),
+        path: destination.to_string_lossy().to_string(),
+    };
+    Ok(Some(ImportMediaResult {
+        items: collect_managed_media(&target_dir),
+        imported,
+    }))
 }
 
 #[tauri::command]

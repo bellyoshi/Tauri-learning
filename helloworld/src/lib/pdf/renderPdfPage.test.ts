@@ -12,7 +12,7 @@ const getDocumentMock = vi.fn(() => ({
 
 vi.mock("./setup", () => ({
   pdfjsLib: {
-    getDocument: (...args: unknown[]) => getDocumentMock(...args)
+    getDocument: (...args: unknown[]) => getDocumentMock(...(args as []))
   }
 }));
 

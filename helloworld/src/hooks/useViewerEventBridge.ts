@@ -24,6 +24,7 @@ export function useViewerEventBridge(totalPages: number, handlers: Handlers) {
         handlers.setMedia(event.payload);
         handlers.setCurrentPage(1);
         handlers.setTotalPages(1);
+        handlers.setZoom(1);
         handlers.setRotation(0);
       }),
       listen(VIEWER_EVENTS.PAGE_NEXT, () =>
@@ -35,7 +36,9 @@ export function useViewerEventBridge(totalPages: number, handlers: Handlers) {
         handlers.setCurrentPage(Math.max(1, totalPagesRef.current))
       ),
       listen<number>(VIEWER_EVENTS.PAGE_SET, (event) =>
-        handlers.setCurrentPage(Math.max(1, event.payload))
+        handlers.setCurrentPage(
+          Math.min(Math.max(1, event.payload), Math.max(1, totalPagesRef.current))
+        )
       ),
       listen(VIEWER_EVENTS.ZOOM_IN, () => handlers.setZoom((prev) => zoomIn(prev))),
       listen(VIEWER_EVENTS.ZOOM_OUT, () => handlers.setZoom((prev) => zoomOut(prev))),
